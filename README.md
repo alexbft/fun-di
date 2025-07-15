@@ -353,7 +353,7 @@ Returns a Promise with resolved value of an injectable in this context.
 
 #### Context.resolveDict
 
-Returns a Promise with a dictionary of resolved injectables. The keys are converted to lowercase. You can name the keys directly or use shorthand syntax.
+Returns a Promise with a dictionary of resolved injectables. The keys are uncapitalized. You can name the keys directly or use shorthand syntax.
 
 ```ts
   const { a, b } = await context.resolve({ a: A, b: B });

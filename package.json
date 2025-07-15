@@ -9,6 +9,11 @@
 		"dependency injection",
 		"typescript"
 	],
+	"author": "alexbft (https://github.com/alexbft)",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/alexbft/fun-di.git"
+	},
 	"license": "MIT",
 	"type": "module",
 	"main": "./dist/index.js",
