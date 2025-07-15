@@ -1,0 +1,68 @@
+# Logs
+
+logs
+_.log
+.pnpm-debug.log*
+
+# Caches
+
+.cache
+
+# Diagnostic reports (https://nodejs.org/api/report.html)
+
+report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
+
+# Runtime data
+
+pids
+_.pid
+_.seed
+*.pid.lock
+
+# Compiled binary addons (https://nodejs.org/api/addons.html)
+
+build/Release
+
+# Dependency directories
+
+node_modules/
+
+# TypeScript cache
+
+*.tsbuildinfo
+
+# Optional npm cache directory
+
+.npm
+
+# Optional eslint cache
+
+.eslintcache
+
+# Optional stylelint cache
+
+.stylelintcache
+
+# Optional REPL history
+
+.node_repl_history
+
+# Output of 'npm pack'
+
+*.tgz
+
+# dotenv environment variable files
+
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+
+# Finder (MacOS) folder config
+.DS_Store
+
+# Package specific
+
+dist
+dist-pack

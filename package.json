@@ -1,0 +1,45 @@
+{
+	"name": "@alexbft0/fun-di",
+	"private": false,
+	"version": "0.0.1",
+	"description": "Fun to use dependency injection framework",
+	"keywords": [
+		"DI",
+		"IoC",
+		"dependency injection",
+		"typescript"
+	],
+	"license": "MIT",
+	"type": "module",
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.js",
+			"default": "./dist/index.js"
+		}
+	},
+	"sideEffects": false,
+	"files": [
+		"dist",
+		"README.md"
+	],
+	"scripts": {
+		"build": "rolldown -c",
+		"test": "vitest",
+		"dev:pack": "pnpm build && pnpm pack --pack-destination=dist-pack"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.0.6",
+		"rolldown": "1.0.0-beta.23",
+		"rolldown-plugin-dts": "^0.13.13",
+		"vite-tsconfig-paths": "^5.1.4",
+		"vitest": "3.2.4"
+	},
+	"dependencies": {
+		"@ungap/with-resolvers": "^0.1.0"
+	}
+}
