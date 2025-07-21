@@ -362,6 +362,32 @@ Returns a Promise with a dictionary of resolved injectables. The keys are uncapi
 
 This method is called implicitly for class and factory dependencies.
 
+#### Context.resolveExternalFactory
+
+Resolves dependencies for a factory that isn't bound in this context, then runs the provider function and returns the result.
+
+```ts
+  const thingFactory = factory(/* ... */);
+
+  const thing = await context.resolveExternalFactory(thingFactory);
+
+  // Is equivalent to:
+  const resolvedDeps = await context.resolveDict(thingFactory.deps);
+  const thing = await thingFactory.run(resolvedDeps);
+```
+
+#### Context.resolveExternalClass
+
+Resolves dependencies for a class that isn't bound in this context, then returns the class instance with injected deps.
+
+```ts
+  class MyClass extends injectDeps(/* ... */) {
+    /* ... */
+  }
+
+  const myClassInstance = await context.resolveExternalClass(MyClass);
+```
+
 ### Global context
 
 In an entry point of a program, you either have to reference a context directly (which is bad practice), or rely on some implicit value which holds a "default" context. This implicit value is called global context.
@@ -385,12 +411,7 @@ For convenience, you can call a factory function directly - it will resolve its 
   ActionRunner();
 
   // Is equivalent to:
-  const resolvedDeps = await getGlobalContext().resolveDict(ActionRunner.deps);
-  ActionRunner.run(resolvedDeps);
-
-  // Or:
-  const tempContext = getGlobalContext().createChildContext("temp", [bind(ActionRunner)]);
-  await tempContext.resolve(ActionRunner);
+  const result = await getGlobalContext().resolveExternalFactory(ActionRunner);
 ```
 
 You can also construct a class directly to inject its deps from a global context.
@@ -406,7 +427,9 @@ You can also construct a class directly to inject its deps from a global context
   }
 
   const instance = new WithDeps();
-  console.log(instance.a); // is injected from global context
+
+  // Is equivalent to:
+  const instance = await getGlobalContext().resolveExternalClass(WithDeps);
 ```
 
 ### Child context
@@ -414,11 +437,12 @@ You can also construct a class directly to inject its deps from a global context
 You can create a child context from a given context with additional bindings. This is useful when implementing Wrapper or Repository patterns, to provide some data to a child handler indirectly. See the example below:
 
 ```ts
-  function actionBindings(name: string): Binding<unknown>[] {
-    const actionLoggerFactory = factory({ baseLogger }, ({ baseLogger }) =>
-      baseLogger.child({ actionName: name }),
-    );
-    return [bind(Logger, { toFactory: actionLoggerFactory })];
+  function actionContextFactory(name: string) {
+    return factory({ Context, Logger }, ({ context, logger }) => {
+      return context.createChildContext("action", [
+        bind(Logger, { toProvider: () => logger.child({ actionName: name }) }),
+      ]);
+    });
   }
 
   export async function main() {
@@ -427,16 +451,14 @@ You can create a child context from a given context with additional bindings. Th
     });
 
     const appContext = createContext("app", [
-      bind(baseLogger, { toProvider: () => createLogger({ level: "info" }) }),
-      bind(Logger, { toInjectable: baseLogger }),
-      bind(helloAction),
+      bind(Logger, { toProvider: () => createLogger({ level: "info" }) }),
     ]);
 
-    const actionContext = appContext.createChildContext("action", [
-      ...actionBindings("hello"),
-    ]);
+    const actionContext = await appContext.resolveExternalFactory(
+      actionContextFactory("hello"),
+    );
 
-    await actionContext.resolve(helloAction);
+    await actionContext.resolveExternalFactory(helloAction);
   }
 ```
 
