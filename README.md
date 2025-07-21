@@ -150,9 +150,9 @@
   // Calling ServerComponent() will inject DbConnection from a global context.
   // In another file:
   //
-  // const globalContext = createContext("global", bind(DbConnection, {
+  // const globalContext = createContext("global", [bind(DbConnection, {
   //   toProvider: () => createPostgresDbConnection()
-  // }));
+  // })]);
   //
   // setGlobalContext(globalContext);
 ```
@@ -415,8 +415,8 @@ You can create a child context from a given context with additional bindings. Th
 
 ```ts
   function actionBindings(name: string): Binding<unknown>[] {
-    const actionLoggerFactory = factory({ Logger }, ({ logger }) =>
-      logger.child({ actionName: name }),
+    const actionLoggerFactory = factory({ baseLogger }, ({ baseLogger }) =>
+      baseLogger.child({ actionName: name }),
     );
     return [bind(Logger, { toFactory: actionLoggerFactory })];
   }
@@ -427,7 +427,8 @@ You can create a child context from a given context with additional bindings. Th
     });
 
     const appContext = createContext("app", [
-      bind(Logger, { toProvider: () => createLogger({ level: "info" }) }),
+      bind(baseLogger, { toProvider: () => createLogger({ level: "info" }) }),
+      bind(Logger, { toInjectable: baseLogger }),
       bind(helloAction),
     ]);
 
