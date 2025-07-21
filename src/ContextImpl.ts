@@ -1,7 +1,9 @@
 import type { Binding, BindingAny, BindingTargetAny } from "~/bind";
 import { Context } from "~/Context";
+import { classToFactory } from "~/helpers/classToFactory";
 import { extractPathNode } from "~/helpers/extractPathNode";
 import { Resolver } from "~/Resolver";
+import type { Factory } from "~/types/Factory";
 import type { InjectableAny } from "~/types/Injectable";
 import type { InjectableOptions } from "~/types/InjectableOptions";
 import type { ResolutionCache } from "~/types/ResolutionCache";
@@ -49,6 +51,15 @@ export class ContextImpl implements Context {
 		deps: TDeps,
 	): Promise<ResolvedDeps<TDeps>> {
 		return new Resolver(this).resolveDict(deps, []);
+	}
+
+	async resolveExternalClass<T>(aClass: new () => T): Promise<T> {
+		return this.resolveExternalFactory(classToFactory(aClass));
+	}
+
+	async resolveExternalFactory<T>(factory: Factory<T>): Promise<T> {
+		const resolvedDeps = await this.resolveDict(factory.deps);
+		return factory.run(resolvedDeps);
 	}
 
 	createChildContext(

@@ -14,8 +14,7 @@ export function factory<TOutput, TDeps extends Deps>(
 		if (!globalContext) {
 			throw new FunDiError("Global context is not set");
 		}
-		const resolvedDeps = await globalContext.resolveDict(result.deps);
-		return result.run(resolvedDeps);
+		return globalContext.resolveExternalFactory(result);
 	}) as Factory<TOutput, TDeps>;
 	(result as { deps: TDeps }).deps = deps;
 	result.run = run;

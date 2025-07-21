@@ -453,3 +453,23 @@ test("child context bindings override parent context bindings", async () => {
 	const a2 = await child.resolve(A);
 	expect(a1).not.toBe(a2);
 });
+
+test("resolve external factory", async () => {
+	const A = injectable<number>();
+	const ctx = createContext("test", [bind(A, { toValue: 42 })]);
+
+	const plusOne = factory({ A }, ({ a }) => a + 1);
+	const aPlusOne = await ctx.resolveExternalFactory(plusOne);
+	expect(aPlusOne).toBe(43);
+});
+
+test("resolve external class", async () => {
+	const A = injectable<number>();
+	const ctx = createContext("test", [bind(A, { toValue: 42 })]);
+
+	class B extends injectDeps({ A }) {
+		plusOne = this.deps.a + 1;
+	}
+	const b = await ctx.resolveExternalClass(B);
+	expect(b.plusOne).toBe(43);
+});
