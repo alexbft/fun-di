@@ -79,7 +79,7 @@
   const env = injectable<EnvType>();
   const envBinding = bind(env, { toValue: "dev" });
 
-  class Logger extends injectDeps({ env }) {
+  abstract class Logger extends injectDeps({ env }) {
     private parent: BaseLogger | undefined;
 
     constructor() {
@@ -98,7 +98,7 @@
   }
   const loggerBinding = bind(Logger);
 
-  class Fetcher extends injectDeps({ apiUrl, Logger }) {
+  abstract class Fetcher extends injectDeps({ apiUrl, Logger }) {
     fetch(path: string) {
       const url = new URL(this.deps.apiUrl + path);
 
@@ -121,40 +121,6 @@
     const response = await fetcher.fetch("posts/1");
     console.log("Response", await response.json());
   }
-```
-
-### Next.js server component with dependencies
-
-```tsx
-  import { factory } from "@alexbft0/fun-di";
-  import { DbConnection } from "~/lib/DbConnection";
-  import { ItemsTable } from "~/lib/ItemsTable";
-
-  export const ServerComponent = factory(
-    { DbConnection },
-    async ({ dbConnection }) => {
-      const items = await dbConnection.select().from(ItemsTable);
-
-      return (
-        <ul>
-          {items.map((item) => (
-            <li key={item.id}>{item.name}</li>
-          ))}
-        </ul>
-      );
-    },
-  );
-
-  ServerComponent.displayName = "ServerComponent";
-
-  // Calling ServerComponent() will inject DbConnection from a global context.
-  // In another file:
-  //
-  // const globalContext = createContext("global", [bind(DbConnection, {
-  //   toProvider: () => createPostgresDbConnection()
-  // })]);
-  //
-  // setGlobalContext(globalContext);
 ```
 
 ## Concepts
@@ -238,7 +204,7 @@ Binds injectable to a class. If the class inherits from `injectDeps` utility cla
   const A = injectable<number>();
   const B = injectable<{ n: number }>();
 
-  class BImpl extends injectDeps({ A }) {
+  abstract class BImpl extends injectDeps({ A }) {
     n = this.deps.a * 2;
   }
 
@@ -381,55 +347,11 @@ Resolves dependencies for a factory that isn't bound in this context, then runs 
 Resolves dependencies for a class that isn't bound in this context, then returns the class instance with injected deps.
 
 ```ts
-  class MyClass extends injectDeps(/* ... */) {
+  abstract class MyClass extends injectDeps(/* ... */) {
     /* ... */
   }
 
   const myClassInstance = await context.resolveExternalClass(MyClass);
-```
-
-### Global context
-
-In an entry point of a program, you either have to reference a context directly (which is bad practice), or rely on some implicit value which holds a "default" context. This implicit value is called global context.
-
-```ts
-  // In some package
-  const appContext = createContext("app", appBindings);
-
-  setGlobalContext(appContext);
-
-  // In index.ts, or in another entry point
-  const app = await getGlobalContext().resolve(App);
-  await app.run();
-```
-
-For convenience, you can call a factory function directly - it will resolve its dependencies in the global context. This makes it perfect for server actions in modern web frameworks.
-
-```ts
-  const ActionRunner = factory({ A, B, C }, ({ a, b, c }) => /* ... */);
-
-  ActionRunner();
-
-  // Is equivalent to:
-  const result = await getGlobalContext().resolveExternalFactory(ActionRunner);
-```
-
-You can also construct a class directly to inject its deps from a global context.
-
-```ts
-  class WithDeps extends injectDeps({ A, B, C }) {
-    public readonly a: A;
-
-    constructor() {
-      super();
-      this.a = this.deps.a;
-    }
-  }
-
-  const instance = new WithDeps();
-
-  // Is equivalent to:
-  const instance = await getGlobalContext().resolveExternalClass(WithDeps);
 ```
 
 ### Child context

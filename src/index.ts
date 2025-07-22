@@ -6,12 +6,12 @@ export {
 	bind,
 } from "~/bind";
 export { Context } from "~/Context";
+export { createContext } from "~/createContext";
 export { BindingError } from "~/errorClasses/BindingError";
 export { BindingNotFoundError } from "~/errorClasses/BindingNotFoundError";
 export { DependencyCycleError } from "~/errorClasses/DependencyCycleError";
 export { FunDiError } from "~/errorClasses/FunDiError";
 export { ResolutionRuntimeError } from "~/errorClasses/ResolutionRuntimeError";
-export { createContext, getGlobalContext, setGlobalContext } from "~/globals";
 export { deferred } from "~/helpers/deferred";
 export { factory } from "~/helpers/factory";
 export { injectable } from "~/helpers/injectable";

@@ -4,7 +4,6 @@ import type { Deps, ResolvedDeps } from "~/types/Resolved";
 
 export interface Factory<TResult, TDeps extends Deps = Deps>
 	extends ObjectInjectable<TResult> {
-	(): Promise<TResult>;
 	get deps(): TDeps;
 	run(resolvedDeps: ResolvedDeps<TDeps>): MaybePromise<TResult>;
 }

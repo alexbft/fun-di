@@ -16,7 +16,7 @@ export interface Context {
 	): Promise<Resolved<T>>;
 	resolveDict<TDeps extends Deps>(deps: TDeps): Promise<ResolvedDeps<TDeps>>;
 	resolveExternalFactory<T>(factory: Factory<T>): Promise<T>;
-	resolveExternalClass<T>(aClass: new () => T): Promise<T>;
+	resolveExternalClass<T>(aClass: abstract new () => T): Promise<T>;
 }
 
 export const Context: Injectable<Context> = injectable<Context>("Context");

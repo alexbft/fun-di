@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { bind } from "~/bind";
-import { createContext } from "~/globals";
+import { createContext } from "~/createContext";
 import { classToFactory } from "~/helpers/classToFactory";
 import { factory } from "~/helpers/factory";
 import { injectDeps } from "~/helpers/injectDeps";
@@ -8,7 +8,7 @@ import { injectDeps } from "~/helpers/injectDeps";
 test("classToFactory", async () => {
 	const A = factory({}, () => 42);
 
-	class B extends injectDeps({ A }) {
+	abstract class B extends injectDeps({ A }) {
 		public readonly a: number;
 
 		constructor() {

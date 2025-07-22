@@ -5,7 +5,8 @@ export function isFactory<T>(
 	injectable: Injectable<T>,
 ): injectable is Factory<T> {
 	return (
-		typeof injectable === "function" &&
+		!!injectable &&
+		typeof injectable === "object" &&
 		"deps" in injectable &&
 		"run" in injectable
 	);

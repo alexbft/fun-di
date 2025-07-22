@@ -15,7 +15,7 @@ export type BindOptions<T> =
 	| { toValue: T }
 	| { scope?: BindScope; toProvider: () => MaybePromise<T> }
 	| { scope?: BindScope; toFactory?: Factory<T> }
-	| { scope?: BindScope; toClass?: new () => T };
+	| { scope?: BindScope; toClass?: abstract new () => T };
 
 type BindingTo<T> =
 	| { kind: "injectable"; toInjectable: InjectableOptions<T> }
@@ -43,7 +43,9 @@ function bind<T extends Injectable<unknown>>(
 	options: BindOptions<Resolved<T>>,
 ): Binding<Resolved<T>>;
 function bind<T extends Factory<unknown>>(selfBound: T): Binding<Resolved<T>>;
-function bind<T extends new () => unknown>(selfBound: T): Binding<Resolved<T>>;
+function bind<T extends abstract new () => unknown>(
+	selfBound: T,
+): Binding<Resolved<T>>;
 function bind<T>(
 	injectable: Injectable<T>,
 	options?: BindOptions<T>,

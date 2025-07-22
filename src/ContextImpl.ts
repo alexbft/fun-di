@@ -1,4 +1,4 @@
-import type { Binding, BindingAny, BindingTargetAny } from "~/bind";
+import type { Binding, BindingTargetAny } from "~/bind";
 import { Context } from "~/Context";
 import { classToFactory } from "~/helpers/classToFactory";
 import { extractPathNode } from "~/helpers/extractPathNode";
@@ -14,29 +14,39 @@ export interface BindingTargetWithCacheRef {
 	contextCache: ResolutionCache;
 }
 
-type BindingWithCacheRef = BindingAny & { contextCache: ResolutionCache };
-
 export class ContextImpl implements Context {
-	public readonly name: string;
+	private readonly parent: ContextImpl | null;
+	private readonly leafName: string;
 	private readonly bindingMap: Map<InjectableAny, BindingTargetWithCacheRef>;
 	public readonly cache: ResolutionCache = new Map();
 
 	constructor(
 		name: string,
 		bindings: Binding<unknown>[],
-		parentBindings?: BindingWithCacheRef[],
+		parent?: ContextImpl,
 	) {
-		this.name = name;
-		const allBindings: BindingWithCacheRef[] = [
-			...(parentBindings ?? []),
-			...bindings.map((binding) => ({ ...binding, contextCache: this.cache })),
+		this.leafName = name;
+		this.parent = parent ?? null;
+		const allBindings: Binding<unknown>[] = [
+			{
+				source: Context,
+				target: { kind: "value", scope: "singleton", toValue: this },
+			},
+			...bindings,
 		];
 		this.bindingMap = new Map(
 			allBindings.map(
-				({ source, target, contextCache }) =>
-					[source, { target, contextCache }] as const,
+				({ source, target }) =>
+					[source, { target, contextCache: this.cache }] as const,
 			),
 		);
+	}
+
+	get name(): string {
+		if (this.parent) {
+			return `${this.parent.name}.${this.leafName}`;
+		}
+		return this.leafName;
 	}
 
 	resolve<T extends InjectableOptions<unknown>>(
@@ -53,7 +63,7 @@ export class ContextImpl implements Context {
 		return new Resolver(this).resolveDict(deps, []);
 	}
 
-	async resolveExternalClass<T>(aClass: new () => T): Promise<T> {
+	async resolveExternalClass<T>(aClass: abstract new () => T): Promise<T> {
 		return this.resolveExternalFactory(classToFactory(aClass));
 	}
 
@@ -66,25 +76,14 @@ export class ContextImpl implements Context {
 		name: string,
 		additionalBindings: Binding<unknown>[],
 	): Context {
-		return new ContextImpl(name, additionalBindings, this.bindings);
-	}
-
-	get bindings(): BindingWithCacheRef[] {
-		const result = [...this.bindingMap.entries()];
-		return result.map(([source, target]) => ({ source, ...target }));
+		return new ContextImpl(name, additionalBindings, this);
 	}
 
 	getBinding(injectable: InjectableAny): BindingTargetWithCacheRef | undefined {
-		if (injectable === Context) {
-			return {
-				target: {
-					scope: "transient",
-					kind: "value",
-					toValue: this,
-				},
-				contextCache: this.cache,
-			};
+		const result = this.bindingMap.get(injectable);
+		if (result === undefined && this.parent) {
+			return this.parent.getBinding(injectable);
 		}
-		return this.bindingMap.get(injectable);
+		return result;
 	}
 }

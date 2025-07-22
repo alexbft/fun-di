@@ -1,5 +1,3 @@
-import { FunDiError } from "~/errorClasses/FunDiError";
-import { getGlobalContext } from "~/globals";
 import { extractName } from "~/helpers/extractPathNode";
 import type { Factory } from "~/types/Factory";
 import type { MaybePromise } from "~/types/MaybePromise";
@@ -9,15 +7,7 @@ export function factory<TOutput, TDeps extends Deps>(
 	deps: TDeps,
 	run: (resolvedDeps: ResolvedDeps<TDeps>) => MaybePromise<TOutput>,
 ): Factory<TOutput, TDeps> {
-	const result = (async () => {
-		const globalContext = getGlobalContext();
-		if (!globalContext) {
-			throw new FunDiError("Global context is not set");
-		}
-		return globalContext.resolveExternalFactory(result);
-	}) as Factory<TOutput, TDeps>;
-	(result as { deps: TDeps }).deps = deps;
-	result.run = run;
+	const result = { deps, run } as Factory<TOutput, TDeps>;
 	if (run.name) {
 		result.displayName = run.name;
 	}

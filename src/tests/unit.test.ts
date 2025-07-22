@@ -1,11 +1,11 @@
 import { expect, test, vi } from "vitest";
 import { bind } from "~/bind";
 import { Context } from "~/Context";
+import { createContext } from "~/createContext";
 import { BindingError } from "~/errorClasses/BindingError";
 import { BindingNotFoundError } from "~/errorClasses/BindingNotFoundError";
 import { DependencyCycleError } from "~/errorClasses/DependencyCycleError";
 import { ResolutionRuntimeError } from "~/errorClasses/ResolutionRuntimeError";
-import { createContext, setGlobalContext } from "~/globals";
 import { deferred } from "~/helpers/deferred";
 import { factory } from "~/helpers/factory";
 import { injectable } from "~/helpers/injectable";
@@ -170,18 +170,6 @@ test("child context", async () => {
 	expect(b).toBe(2);
 });
 
-test("global context", async () => {
-	const A = factory({}, () => 1);
-	const B = factory({}, () => 2);
-
-	setGlobalContext(createContext("global", [bind(A), bind(B)]));
-
-	const action = factory({ A, B }, ({ a, b }) => {
-		return a + b;
-	});
-	await expect(action()).resolves.toBe(3);
-});
-
 test("optional deps", async () => {
 	const A = injectable<number>();
 	const B = injectable<number>();
@@ -315,7 +303,7 @@ test("fails early if one of dependencies cannot be resolved", async () => {
 
 test("bind class injectable to itself", async () => {
 	const B = factory({}, () => 42);
-	class A extends injectDeps({ B }) {
+	abstract class A extends injectDeps({ B }) {
 		getB() {
 			return this.deps.b;
 		}
@@ -331,7 +319,7 @@ test("bind abstract class to another class", async () => {
 	abstract class A {
 		abstract kind: string;
 	}
-	class B extends injectDeps({}) {
+	abstract class B extends injectDeps({}) {
 		kind = "b";
 	}
 	const testContext = createContext("test", [bind(A, { toClass: B })]);
@@ -363,7 +351,7 @@ test("basic class with deps", async () => {
 	const A = injectable<number>();
 	const B = injectable<{ n: number }>();
 
-	class BImpl extends injectDeps({ A }) {
+	abstract class BImpl extends injectDeps({ A }) {
 		n = this.deps.a * 2;
 	}
 
@@ -380,7 +368,10 @@ test("deferred cyclic injection", async () => {
 	const A = injectable<DeferredTest>();
 	const B = injectable<DeferredTest>();
 
-	class AImpl extends injectDeps({ b: deferred(B) }) implements DeferredTest {
+	abstract class AImpl
+		extends injectDeps({ b: deferred(B) })
+		implements DeferredTest
+	{
 		x = 1;
 		async sum() {
 			const bx = (await this.deps.b).x;
@@ -388,7 +379,10 @@ test("deferred cyclic injection", async () => {
 		}
 	}
 
-	class BImpl extends injectDeps({ a: deferred(A) }) implements DeferredTest {
+	abstract class BImpl
+		extends injectDeps({ a: deferred(A) })
+		implements DeferredTest
+	{
 		x = 2;
 		async sum() {
 			const ax = (await this.deps.a).x;
@@ -467,9 +461,16 @@ test("resolve external class", async () => {
 	const A = injectable<number>();
 	const ctx = createContext("test", [bind(A, { toValue: 42 })]);
 
-	class B extends injectDeps({ A }) {
+	abstract class B extends injectDeps({ A }) {
 		plusOne = this.deps.a + 1;
 	}
 	const b = await ctx.resolveExternalClass(B);
 	expect(b.plusOne).toBe(43);
+});
+
+test("child context name includes parent name", () => {
+	const parent = createContext("parent", []);
+	const child = parent.createChildContext("child", []);
+
+	expect(child.name).toBe("parent.child");
 });
