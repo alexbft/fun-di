@@ -1,10 +1,10 @@
 import type {
-	DeferredInjectable,
-	InjectableOptions,
+  DeferredInjectable,
+  InjectableOptions,
 } from "~/types/InjectableOptions";
 
 export function isDeferredInjectable<T>(
-	injectableOptions: InjectableOptions<T>,
+  injectableOptions: InjectableOptions<T>,
 ): injectableOptions is DeferredInjectable<T> {
-	return "type" in injectableOptions && injectableOptions.type === "deferred";
+  return "type" in injectableOptions && injectableOptions.type === "deferred";
 }

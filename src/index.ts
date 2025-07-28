@@ -1,9 +1,9 @@
 export {
-	type Binding,
-	type BindingTarget,
-	type BindOptions,
-	type BindScope,
-	bind,
+  type Binding,
+  type BindingTarget,
+  type BindOptions,
+  type BindScope,
+  bind,
 } from "~/bind";
 export { Context } from "~/Context";
 export { createContext } from "~/createContext";
@@ -21,8 +21,8 @@ export type { DepsOf } from "~/types/DepsOf";
 export type { Factory } from "~/types/Factory";
 export type { Injectable } from "~/types/Injectable";
 export type {
-	InjectableOptions,
-	OptionalInjectable,
+  InjectableOptions,
+  OptionalInjectable,
 } from "~/types/InjectableOptions";
 export type { MaybePromise } from "~/types/MaybePromise";
 export type { Deps, Resolved, ResolvedDeps } from "~/types/Resolved";

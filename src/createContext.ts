@@ -3,8 +3,8 @@ import type { Context } from "~/Context";
 import { ContextImpl } from "~/ContextImpl";
 
 export function createContext(
-	name: string,
-	bindings: Binding<unknown>[],
+  name: string,
+  bindings: Binding<unknown>[],
 ): Context {
-	return new ContextImpl(name, bindings);
+  return new ContextImpl(name, bindings);
 }
