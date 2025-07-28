@@ -35,7 +35,8 @@
   "scripts": {
     "build": "rolldown -c",
     "test": "vitest",
-    "dev:pack": "pnpm build && pnpm pack --pack-destination=dist-pack"
+    "dev:pack": "pnpm build && pnpm pack --pack-destination=dist-pack",
+    "dev:publish": "pnpm build && pnpm publish"
   },
   "devDependencies": {
     "@biomejs/biome": "2.0.6",
