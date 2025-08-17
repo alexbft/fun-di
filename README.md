@@ -359,34 +359,30 @@ Resolves dependencies for a class that isn't bound in this context, then returns
 You can create a child context from a given context with additional bindings. This is useful when implementing Wrapper or Repository patterns, to provide some data to a child handler indirectly. See the example below:
 
 ```ts
-  function actionContextFactory(name: string) {
-    return factory({ Context, Logger }, ({ context, logger }) => {
-      return context.createChildContext("action", [
-        bind(Logger, { toProvider: () => logger.child({ actionName: name }) }),
-      ]);
-    });
-  }
+  const helloAction = factory({ Logger }, ({ logger }) => {
+    logger.info("Hello world!");
+  });
 
-  export async function main() {
-    const helloAction = factory({ Logger }, ({ logger }) => {
-      logger.info("Hello world!");
-    });
+  const appContext = createContext("app", [
+    bind(Logger, { toProvider: () => createLogger({ level: "info" }) }),
+  ]);
 
-    const appContext = createContext("app", [
-      bind(Logger, { toProvider: () => createLogger({ level: "info" }) }),
-    ]);
+  const actionContext = appContext.createChildContext("action", [
+    bind(Logger, {
+      toFactory: factory({ parentLogger: parent(Logger) }, ({ parentLogger }) =>
+        parentLogger.child({ actionName: "hello" }),
+      ),
+    }),
+  ]);
 
-    const actionContext = await appContext.resolveExternalFactory(
-      actionContextFactory("hello"),
-    );
-
-    await actionContext.resolveExternalFactory(helloAction);
-  }
+  await actionContext.resolveExternalFactory(helloAction);
 ```
 
 In this example, action is resolved in a context that provides a customized Logger instance - decorated with the action name. This logic can be extracted into a helper function.
 
 ### Resolution options
+
+You can specify a single modifier to an injectable to change the resolution process.
 
 #### Optional dependency
 
@@ -419,4 +415,54 @@ This allows you to have indirect circular dependencies, when `A` has a reference
     const a = await aPromise;
     return a * 2;
   });
+```
+
+#### Parent modifier
+
+With the `parent` modifier, the value will be resolved in the parent context. This is useful if a child binding needs to access the same injectable in the parent context.
+
+```ts
+  const A = injectable<number>();
+
+  const main = createContext("main", [bind(A, { toValue: 1 })]);
+
+  const betterA = factory({ A: parent(A) }, ({ a }) => a * 2);
+
+  const sub = main.createChildContext("sub", [bind(A, { toFactory: betterA })]);
+
+  const a = await sub.resolve(A); // 2
+```
+
+#### Multi bindings
+
+Returns an array with resolution results of all bindings of a given injectable, preserving order. Bindings in the parent context will be listed first.
+
+```ts
+  const A = injectable<string>();
+  const commonBindings = [
+    bind(A, { toValue: "common1" }),
+    bind(A, { toValue: "common2" }),
+  ];
+  const parentBindings = [
+    ...commonBindings,
+    bind(A, { toValue: "parent1" }),
+    bind(A, { toValue: "parent2" }),
+  ];
+  const childBindings = [
+    ...commonBindings,
+    bind(A, { toValue: "child1" }),
+    bind(A, { toValue: "child2" }),
+  ];
+  const parentContext = createContext("parent", parentBindings);
+  const childContext = parentContext.createChildContext("child", childBindings);
+
+  const resolved = await childContext.resolve(multi(A));
+  expect(resolved).toEqual([
+    "common1",
+    "common2",
+    "parent1",
+    "parent2",
+    "child1",
+    "child2",
+  ]);
 ```

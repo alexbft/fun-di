@@ -220,6 +220,7 @@ export class Resolver {
     let resultScope: Exclude<BindScope, "dependent"> = "singleton";
     for (const [key, injectableOptions] of Object.entries(deps)) {
       let dependencyScope: BindScope = "singleton";
+      // TODO: handle multi bindings
       const injectable = isDecoratedInjectable(injectableOptions)
         ? injectableOptions.injectable
         : injectableOptions;
