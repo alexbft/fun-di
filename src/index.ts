@@ -17,12 +17,16 @@ export { factory } from "~/helpers/factory";
 export { injectable } from "~/helpers/injectable";
 export { injectDeps } from "~/helpers/injectDeps";
 export { optional } from "~/helpers/optional";
+export { parent } from "~/helpers/parent";
 export type { DepsOf } from "~/types/DepsOf";
 export type { Factory } from "~/types/Factory";
 export type { Injectable } from "~/types/Injectable";
 export type {
+  DecoratedInjectable,
+  DeferredInjectable,
   InjectableOptions,
   OptionalInjectable,
+  ParentInjectable,
 } from "~/types/InjectableOptions";
 export type { MaybePromise } from "~/types/MaybePromise";
 export type { Deps, Resolved, ResolvedDeps } from "~/types/Resolved";

@@ -39,9 +39,9 @@
     "dev:publish": "pnpm build && pnpm publish"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.0.6",
-    "rolldown": "1.0.0-beta.23",
-    "rolldown-plugin-dts": "^0.13.13",
+    "@biomejs/biome": "2.2.0",
+    "rolldown": "1.0.0-beta.32",
+    "rolldown-plugin-dts": "^0.15.6",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "3.2.4"
   },

@@ -1,19 +1,22 @@
-import type { ClassInjectable, ObjectInjectable } from "~/types/Injectable";
+import type { Injectable } from "~/types/Injectable";
 import type {
   DeferredInjectable,
   InjectableOptions,
   OptionalInjectable,
+  ParentInjectable,
 } from "~/types/InjectableOptions";
 
-export type Resolved<T> = T extends OptionalInjectable<infer U>
+export type Resolved<T> = T extends Injectable<infer U>
+  ? U
+  : ResolveDecoratedInjectable<T>;
+
+type ResolveDecoratedInjectable<T> = T extends OptionalInjectable<infer U>
   ? U | undefined
   : T extends DeferredInjectable<infer U>
     ? Promise<U>
-    : T extends ObjectInjectable<infer U>
+    : T extends ParentInjectable<infer U>
       ? U
-      : T extends ClassInjectable<infer U>
-        ? U
-        : never;
+      : never;
 
 export type Deps = Record<string, InjectableOptions<unknown>>;
 

@@ -1,7 +1,7 @@
 import type { Binding, BindingTargetAny } from "~/bind";
 import { Context } from "~/Context";
 import { classToFactory } from "~/helpers/classToFactory";
-import { extractPathNode } from "~/helpers/extractPathNode";
+import { ResolutionPath } from "~/ResolutionPath";
 import { Resolver } from "~/Resolver";
 import type { Factory } from "~/types/Factory";
 import type { InjectableAny } from "~/types/Injectable";
@@ -15,7 +15,7 @@ export interface BindingTargetWithCacheRef {
 }
 
 export class ContextImpl implements Context {
-  private readonly parent: ContextImpl | null;
+  public readonly parent: ContextImpl | null;
   private readonly leafName: string;
   private readonly bindingMap: Map<InjectableAny, BindingTargetWithCacheRef>;
   public readonly cache: ResolutionCache = new Map();
@@ -52,15 +52,16 @@ export class ContextImpl implements Context {
   resolve<T extends InjectableOptions<unknown>>(
     injectableOptions: T,
   ): Promise<Resolved<T>> {
-    return new Resolver(this).resolve(injectableOptions, [
-      extractPathNode(injectableOptions),
-    ]);
+    return new Resolver().resolve(
+      injectableOptions,
+      ResolutionPath.root(this).add({ injectableOptions }),
+    );
   }
 
   async resolveDict<TDeps extends Deps>(
     deps: TDeps,
   ): Promise<ResolvedDeps<TDeps>> {
-    return new Resolver(this).resolveDict(deps, []);
+    return new Resolver().resolveDict(deps, ResolutionPath.root(this));
   }
 
   async resolveExternalClass<T>(aClass: abstract new () => T): Promise<T> {

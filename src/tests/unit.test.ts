@@ -11,6 +11,7 @@ import { factory } from "~/helpers/factory";
 import { injectable } from "~/helpers/injectable";
 import { injectDeps } from "~/helpers/injectDeps";
 import { optional } from "~/helpers/optional";
+import { parent } from "~/helpers/parent";
 import type { Injectable } from "~/types/Injectable";
 import type { Resolved, ResolvedDeps } from "~/types/Resolved";
 
@@ -473,4 +474,24 @@ test("child context name includes parent name", () => {
   const child = parent.createChildContext("child", []);
 
   expect(child.name).toBe("parent.child");
+});
+
+test("decorate parent binding", async () => {
+  const A = injectable<number>();
+  const parentBinding = bind(A, { toValue: 1 });
+  const decoratedBinding = bind(A, {
+    toFactory: factory({ parentA: parent(A) }, ({ parentA }) => {
+      return parentA + 2;
+    }),
+  });
+  const parentContext = createContext("parent", [parentBinding]);
+  const childContext = parentContext.createChildContext("child", [
+    decoratedBinding,
+  ]);
+  const grandChildContext = childContext.createChildContext("grandchild", [
+    decoratedBinding,
+  ]);
+
+  const a = await grandChildContext.resolve(A);
+  expect(a).toBe(5);
 });

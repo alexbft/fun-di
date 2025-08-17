@@ -1,4 +1,4 @@
-import { extractName } from "~/helpers/extractPathNode";
+import { extractName } from "~/helpers/extractName";
 import type { Injectable } from "~/types/Injectable";
 
 export function injectable<T>(displayName?: string): Injectable<T> {

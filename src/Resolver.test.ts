@@ -2,10 +2,10 @@ import { describe, expect, test } from "vitest";
 import { bind } from "~/bind";
 import { ContextImpl } from "~/ContextImpl";
 import { DependencyCycleError } from "~/errorClasses/DependencyCycleError";
-import { extractPathNode } from "~/helpers/extractPathNode";
 import { factory } from "~/helpers/factory";
 import { injectable } from "~/helpers/injectable";
 import { optional } from "~/helpers/optional";
+import { ResolutionPath } from "~/ResolutionPath";
 import { Resolver } from "~/Resolver";
 
 describe("Resolver", () => {
@@ -27,9 +27,12 @@ describe("Resolver", () => {
       requestBinding,
       abcBinding,
     ]);
-    const resolver1 = new Resolver(context1);
+    const resolver1 = new Resolver();
     expect(
-      resolver1.getActualScopeForDependentBinding(abcBinding.target, []),
+      resolver1.getActualScopeForDependentBinding(
+        abcBinding.target,
+        ResolutionPath.root(context1),
+      ),
     ).toBe("request");
 
     const context2 = new ContextImpl("2", [
@@ -37,9 +40,12 @@ describe("Resolver", () => {
       transientBinding,
       abcBinding,
     ]);
-    const resolver2 = new Resolver(context2);
+    const resolver2 = new Resolver();
     expect(
-      resolver2.getActualScopeForDependentBinding(abcBinding.target, []),
+      resolver2.getActualScopeForDependentBinding(
+        abcBinding.target,
+        ResolutionPath.root(context2),
+      ),
     ).toBe("transient");
 
     const context3 = new ContextImpl("3", [
@@ -47,9 +53,12 @@ describe("Resolver", () => {
       transientBinding,
       abcBinding,
     ]);
-    const resolver3 = new Resolver(context3);
+    const resolver3 = new Resolver();
     expect(
-      resolver3.getActualScopeForDependentBinding(abcBinding.target, []),
+      resolver3.getActualScopeForDependentBinding(
+        abcBinding.target,
+        ResolutionPath.root(context3),
+      ),
     ).toBe("transient");
   });
 
@@ -63,10 +72,13 @@ describe("Resolver", () => {
       bind(B),
       bind(C),
     ]);
-    const resolver = new Resolver(context);
-    expect(resolver.getActualScopeForDependentBinding(bind(C).target, [])).toBe(
-      "request",
-    );
+    const resolver = new Resolver();
+    expect(
+      resolver.getActualScopeForDependentBinding(
+        bind(C).target,
+        ResolutionPath.root(context),
+      ),
+    ).toBe("request");
   });
 
   test("checks cycles while calculating scope", () => {
@@ -77,19 +89,22 @@ describe("Resolver", () => {
     const bBinding = bind(B);
 
     const context = new ContextImpl("test", [aBinding, bBinding]);
-    const resolver = new Resolver(context);
+    const resolver = new Resolver();
+    const root = ResolutionPath.root(context);
 
     const resultA = () =>
-      resolver.getActualScopeForDependentBinding(aBinding.target, [
-        extractPathNode(A),
-      ]);
+      resolver.getActualScopeForDependentBinding(
+        aBinding.target,
+        root.add({ injectableOptions: A }),
+      );
     expect(resultA).toThrowError(DependencyCycleError);
     expect(resultA).toThrowError("A -> B -> A");
 
     const resultB = () =>
-      resolver.getActualScopeForDependentBinding(bBinding.target, [
-        extractPathNode(B),
-      ]);
+      resolver.getActualScopeForDependentBinding(
+        bBinding.target,
+        root.add({ injectableOptions: B }),
+      );
     expect(resultB).toThrowError(DependencyCycleError);
     expect(resultB).toThrowError("B -> A -> B");
   });

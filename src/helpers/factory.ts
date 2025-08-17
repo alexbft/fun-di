@@ -1,4 +1,4 @@
-import { extractName } from "~/helpers/extractPathNode";
+import { extractName } from "~/helpers/extractName";
 import type { Factory } from "~/types/Factory";
 import type { MaybePromise } from "~/types/MaybePromise";
 import type { Deps, ResolvedDeps } from "~/types/Resolved";

@@ -1,23 +1,22 @@
 import "@ungap/with-resolvers";
 
 import type { BindingTarget, BindingTargetAny, BindScope } from "~/bind";
-import type { BindingTargetWithCacheRef, ContextImpl } from "~/ContextImpl";
+import type { BindingTargetWithCacheRef } from "~/ContextImpl";
 import { BindingNotFoundError } from "~/errorClasses/BindingNotFoundError";
-import { DependencyCycleError } from "~/errorClasses/DependencyCycleError";
 import { FunDiError } from "~/errorClasses/FunDiError";
 import { ResolutionRuntimeError } from "~/errorClasses/ResolutionRuntimeError";
-import { extractPathNode } from "~/helpers/extractPathNode";
-import { formatPath } from "~/helpers/formatPath";
+import { isDecoratedInjectable } from "~/helpers/isDecoratedInjectable";
 import { isDeferredInjectable } from "~/helpers/isDeferredInjectable";
 import { isOptionalInjectable } from "~/helpers/isOptionalInjectable";
+import { isParentInjectable } from "~/helpers/isParentInjectable";
 import { uncapitalize } from "~/helpers/uncapitalize";
+import type { ResolutionPath } from "~/ResolutionPath";
 import type { Injectable } from "~/types/Injectable";
 import type {
   InjectableOptions,
   InjectableOptionsAny,
 } from "~/types/InjectableOptions";
 import type { MaybePromise } from "~/types/MaybePromise";
-import type { PathNode } from "~/types/PathNode";
 import type { ResolutionCache } from "~/types/ResolutionCache";
 import type {
   OptionsResolutionResult,
@@ -29,11 +28,9 @@ export class Resolver {
   private readonly resolutionCache: ResolutionCache = new Map();
   private readonly abortController = new AbortController();
 
-  constructor(private readonly context: ContextImpl) {}
-
   async resolveDict<TDeps extends Deps>(
     deps: TDeps,
-    path: PathNode[],
+    path: ResolutionPath,
   ): Promise<ResolvedDeps<TDeps>> {
     return this.unwrapResolutionResult(
       await this.resolveDictInternal(deps, path),
@@ -42,7 +39,7 @@ export class Resolver {
 
   private async resolveDictInternal<TDeps extends Deps>(
     deps: TDeps,
-    path: PathNode[],
+    path: ResolutionPath,
   ): Promise<ResolutionResult<ResolvedDeps<TDeps>>> {
     const failEarly =
       Promise.withResolvers<ResolutionResult<ResolvedDeps<TDeps>>>();
@@ -51,7 +48,7 @@ export class Resolver {
       async ([key, injectableOptions]) => {
         const resolutionResult = await this.resolveInjectableOptionsInternal(
           injectableOptions,
-          this.addPathNode(path, extractPathNode(injectableOptions, key)),
+          path.add({ injectableOptions, alias: key }),
         );
         if (resolutionResult.type !== "success") {
           hasFailed = true;
@@ -81,7 +78,7 @@ export class Resolver {
 
   async resolve<T extends InjectableOptions<unknown>>(
     injectableOptions: T,
-    path: PathNode[],
+    path: ResolutionPath,
   ): Promise<Resolved<T>> {
     return this.unwrapResolutionResult(
       await this.resolveInjectableOptionsInternal(injectableOptions, path),
@@ -92,7 +89,7 @@ export class Resolver {
     T extends InjectableOptionsAny,
   >(
     injectableOptions: T,
-    path: PathNode[],
+    path: ResolutionPath,
   ): Promise<OptionsResolutionResult<T>> {
     if (isOptionalInjectable(injectableOptions)) {
       const result = await this.resolveInternal(
@@ -111,20 +108,19 @@ export class Resolver {
       return {
         type: "success",
         value: Promise.resolve().then(() =>
-          this.resolve(
-            injectableOptions.injectable,
-            // biome-ignore lint/style/noNonNullAssertion: obvious
-            path.length > 0 ? [path.at(-1)!] : [],
-          ),
+          this.resolve(injectableOptions.injectable, path.truncateToLastNode()),
         ),
       } as OptionsResolutionResult<T>;
+    }
+    if (isParentInjectable(injectableOptions)) {
+      return this.resolveInternal(injectableOptions.injectable, path);
     }
     return this.resolveInternal(injectableOptions, path);
   }
 
   private async resolveInternal<T>(
     injectable: Injectable<T>,
-    path: PathNode[],
+    path: ResolutionPath,
   ): Promise<ResolutionResult<T>> {
     if (this.abortSignal.aborted) {
       return {
@@ -133,7 +129,7 @@ export class Resolver {
         path,
       };
     }
-    const binding = this.context.getBinding(injectable);
+    const binding = path.context?.getBinding(injectable);
     if (!binding) {
       return {
         type: "notFound",
@@ -148,7 +144,7 @@ export class Resolver {
   private resolveBinding<T>(
     injectable: Injectable<T>,
     binding: BindingTargetWithCacheRef,
-    path: PathNode[],
+    path: ResolutionPath,
   ): Promise<OptionsResolutionResult<InjectableOptions<T>>> {
     const scope =
       binding.target.scope === "dependent"
@@ -175,9 +171,9 @@ export class Resolver {
   }
 
   // Visible for testing
-  getActualScopeForDependentBinding(
+  public getActualScopeForDependentBinding(
     binding: BindingTarget<unknown>,
-    path: PathNode[],
+    path: ResolutionPath,
   ): Exclude<BindScope, "dependent"> {
     if (binding.scope !== "dependent") {
       throw new FunDiError("unexpected");
@@ -188,20 +184,19 @@ export class Resolver {
     const deps = binding.toFactory.deps;
     let resultScope: Exclude<BindScope, "dependent"> = "singleton";
     for (const [key, injectableOptions] of Object.entries(deps)) {
-      const injectable =
-        isOptionalInjectable(injectableOptions) ||
-        isDeferredInjectable(injectableOptions)
-          ? injectableOptions.injectable
-          : injectableOptions;
-      const dependencyBinding = this.context.getBinding(injectable);
-      let dependencyScope = dependencyBinding?.target?.scope ?? "singleton";
+      let dependencyScope: BindScope = "singleton";
+      const injectable = isDecoratedInjectable(injectableOptions)
+        ? injectableOptions.injectable
+        : injectableOptions;
+      const dependencyBinding = path.context?.getBinding(injectable);
+      dependencyScope = dependencyBinding?.target?.scope ?? dependencyScope;
       if (dependencyScope === "dependent") {
         if (isDeferredInjectable(injectableOptions)) {
           dependencyScope = "singleton";
         } else {
           dependencyScope = this.getActualScopeForDependentBinding(
             dependencyBinding?.target as BindingTargetAny,
-            this.addPathNode(path, extractPathNode(injectable, key)),
+            path.add({ injectableOptions, alias: key }),
           );
         }
       }
@@ -220,7 +215,7 @@ export class Resolver {
 
   private async getBoundValue<T>(
     binding: BindingTarget<T>,
-    path: PathNode[],
+    path: ResolutionPath,
   ): Promise<OptionsResolutionResult<InjectableOptions<T>>> {
     switch (binding.kind) {
       case "factory": {
@@ -239,7 +234,7 @@ export class Resolver {
       case "injectable": {
         return await this.resolveInjectableOptionsInternal(
           binding.toInjectable,
-          this.addPathNode(path, extractPathNode(binding.toInjectable)),
+          path.add({ injectableOptions: binding.toInjectable }),
         );
       }
       case "value":
@@ -256,7 +251,7 @@ export class Resolver {
     cache: ResolutionCache,
     injectable: Injectable<T>,
     binding: BindingTarget<T>,
-    path: PathNode[],
+    path: ResolutionPath,
   ): Promise<OptionsResolutionResult<InjectableOptions<T>>> {
     const existing = cache.get(injectable);
     if (existing) {
@@ -275,19 +270,9 @@ export class Resolver {
     return result;
   }
 
-  private addPathNode(path: PathNode[], newNode: PathNode): PathNode[] {
-    const newPath = [...path, newNode];
-    if (path.some((node) => node.injectable === newNode.injectable)) {
-      throw new DependencyCycleError(
-        `Cycle detected: ${formatPath(newPath)} in context "${this.context.name}"`,
-      );
-    }
-    return newPath;
-  }
-
   private async wrapResult<T>(
     result: () => MaybePromise<T>,
-    path: PathNode[],
+    path: ResolutionPath,
   ): Promise<ResolutionResult<T>> {
     try {
       return {
@@ -307,11 +292,11 @@ export class Resolver {
     switch (resolutionResult.type) {
       case "notFound":
         throw new BindingNotFoundError(
-          `Binding not found for ${formatPath(resolutionResult.path)} in context "${this.context.name}"`,
+          `Binding not found. Path: ${resolutionResult.path.render()}`,
         );
       case "runtimeError":
         throw new ResolutionRuntimeError(
-          `An error occured while resolving ${formatPath(resolutionResult.path)} in context "${this.context.name}"`,
+          `An error occured in resolution process. Path: ${resolutionResult.path.render()}`,
           { cause: resolutionResult.error },
         );
       default:
