@@ -33,6 +33,7 @@
     "README.md"
   ],
   "scripts": {
+    "lint": "biome lint && tsc --noEmit",
     "build": "rolldown -c",
     "test": "vitest",
     "dev:pack": "pnpm build && pnpm pack --pack-destination=dist-pack",

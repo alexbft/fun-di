@@ -1,12 +1,18 @@
 import "@ungap/with-resolvers";
 
-import type { BindingTarget, BindingTargetAny, BindScope } from "~/bind";
-import type { BindingTargetWithCacheRef } from "~/ContextImpl";
+import type {
+  Binding,
+  BindingTarget,
+  BindingTargetAny,
+  BindScope,
+} from "~/bind";
+import type { BindingWithCacheRef } from "~/ContextImpl";
 import { BindingNotFoundError } from "~/errorClasses/BindingNotFoundError";
 import { FunDiError } from "~/errorClasses/FunDiError";
 import { ResolutionRuntimeError } from "~/errorClasses/ResolutionRuntimeError";
 import { isDecoratedInjectable } from "~/helpers/isDecoratedInjectable";
 import { isDeferredInjectable } from "~/helpers/isDeferredInjectable";
+import { isMultiInjectable } from "~/helpers/isMultiInjectable";
 import { isOptionalInjectable } from "~/helpers/isOptionalInjectable";
 import { isParentInjectable } from "~/helpers/isParentInjectable";
 import { uncapitalize } from "~/helpers/uncapitalize";
@@ -115,6 +121,12 @@ export class Resolver {
     if (isParentInjectable(injectableOptions)) {
       return this.resolveInternal(injectableOptions.injectable, path);
     }
+    if (isMultiInjectable(injectableOptions)) {
+      return (await this.resolveMultiInternal(
+        injectableOptions.injectable,
+        path,
+      )) as OptionsResolutionResult<T>;
+    }
     return this.resolveInternal(injectableOptions, path);
   }
 
@@ -122,13 +134,6 @@ export class Resolver {
     injectable: Injectable<T>,
     path: ResolutionPath,
   ): Promise<ResolutionResult<T>> {
-    if (this.abortSignal.aborted) {
-      return {
-        type: "runtimeError",
-        error: this.abortSignal.reason,
-        path,
-      };
-    }
     const binding = path.context?.getBinding(injectable);
     if (!binding) {
       return {
@@ -136,37 +141,67 @@ export class Resolver {
         path,
       };
     }
-    return await (this.resolveBinding(injectable, binding, path) as Promise<
+    return await (this.resolveBinding(binding, path) as Promise<
       ResolutionResult<T>
     >);
   }
 
-  private resolveBinding<T>(
+  private async resolveMultiInternal<T>(
     injectable: Injectable<T>,
-    binding: BindingTargetWithCacheRef,
     path: ResolutionPath,
-  ): Promise<OptionsResolutionResult<InjectableOptions<T>>> {
+  ): Promise<ResolutionResult<T[]>> {
+    const bindings = path.context?.getAllBindings(injectable) ?? [];
+    const failEarly = Promise.withResolvers<ResolutionResult<T[]>>();
+    let hasFailed = false;
+    const valuesP = bindings.map(async (binding) => {
+      const resolutionResult = await this.resolveBinding(binding, path);
+      if (resolutionResult.type !== "success") {
+        hasFailed = true;
+        failEarly.resolve(resolutionResult);
+        if (!this.abortSignal.aborted) {
+          this.abortController.abort(new FunDiError("Aborted"));
+        }
+        throw new FunDiError("Failed to resolve");
+      }
+      return resolutionResult.value as T;
+    });
+    const result = await Promise.race([
+      Promise.all(valuesP).then(
+        (values): ResolutionResult<T[]> => ({
+          type: "success",
+          value: values,
+        }),
+      ),
+      failEarly.promise,
+    ]);
+    if (hasFailed) {
+      return failEarly.promise;
+    }
+    return result;
+  }
+
+  private resolveBinding(
+    binding: BindingWithCacheRef,
+    path: ResolutionPath,
+  ): Promise<OptionsResolutionResult<InjectableOptions<unknown>>> {
+    if (this.abortSignal.aborted) {
+      return Promise.resolve({
+        type: "runtimeError",
+        error: this.abortSignal.reason,
+        path,
+      });
+    }
     const scope =
-      binding.target.scope === "dependent"
-        ? this.getActualScopeForDependentBinding(binding.target, path)
-        : binding.target.scope;
+      binding.binding.target.scope === "dependent"
+        ? this.getActualScopeForDependentBinding(binding.binding.target, path)
+        : binding.binding.target.scope;
     switch (scope) {
       case "transient":
-        return this.getBoundValue(binding.target, path);
+        return this.getBoundValue(binding.binding, path);
       case "request":
-        return this.getCachedValue(
-          this.resolutionCache,
-          injectable,
-          binding.target,
-          path,
-        );
+        return this.getCachedValue(this.resolutionCache, binding.binding, path);
       case "singleton":
-        return this.getCachedValue(
-          binding.contextCache,
-          injectable,
-          binding.target,
-          path,
-        );
+        return this.getCachedValue(binding.contextCache, binding.binding, path);
     }
   }
 
@@ -189,13 +224,14 @@ export class Resolver {
         ? injectableOptions.injectable
         : injectableOptions;
       const dependencyBinding = path.context?.getBinding(injectable);
-      dependencyScope = dependencyBinding?.target?.scope ?? dependencyScope;
+      dependencyScope =
+        dependencyBinding?.binding?.target?.scope ?? dependencyScope;
       if (dependencyScope === "dependent") {
         if (isDeferredInjectable(injectableOptions)) {
           dependencyScope = "singleton";
         } else {
           dependencyScope = this.getActualScopeForDependentBinding(
-            dependencyBinding?.target as BindingTargetAny,
+            dependencyBinding?.binding?.target as BindingTargetAny,
             path.add({ injectableOptions, alias: key }),
           );
         }
@@ -213,59 +249,57 @@ export class Resolver {
     return resultScope;
   }
 
-  private async getBoundValue<T>(
-    binding: BindingTarget<T>,
+  private async getBoundValue(
+    binding: Binding<unknown>,
     path: ResolutionPath,
-  ): Promise<OptionsResolutionResult<InjectableOptions<T>>> {
-    switch (binding.kind) {
+  ): Promise<OptionsResolutionResult<InjectableOptions<unknown>>> {
+    const target = binding.target;
+    switch (target.kind) {
       case "factory": {
         const factoryDepsResult = await this.resolveDictInternal(
-          binding.toFactory.deps,
+          target.toFactory.deps,
           path,
         );
         if (factoryDepsResult.type !== "success") {
           return factoryDepsResult;
         }
         return await this.wrapResult(
-          () => binding.toFactory.run(factoryDepsResult.value),
+          () => target.toFactory.run(factoryDepsResult.value),
           path,
         );
       }
       case "injectable": {
         return await this.resolveInjectableOptionsInternal(
-          binding.toInjectable,
-          path.add({ injectableOptions: binding.toInjectable }),
+          target.toInjectable,
+          path.add({ injectableOptions: target.toInjectable }),
         );
       }
       case "value":
-        return { type: "success", value: binding.toValue as T };
+        return { type: "success", value: target.toValue };
       case "provider":
         return await this.wrapResult(
-          () => binding.toProvider.call(undefined),
+          () => target.toProvider.call(undefined),
           path,
         );
     }
   }
 
-  private async getCachedValue<T>(
+  private async getCachedValue(
     cache: ResolutionCache,
-    injectable: Injectable<T>,
-    binding: BindingTarget<T>,
+    binding: Binding<unknown>,
     path: ResolutionPath,
-  ): Promise<OptionsResolutionResult<InjectableOptions<T>>> {
-    const existing = cache.get(injectable);
+  ): Promise<OptionsResolutionResult<InjectableOptions<unknown>>> {
+    const existing = cache.get(binding);
     if (existing) {
-      const result = await (existing as Promise<
-        ResolutionResult<T | undefined>
-      >);
+      const result = await existing;
       if (result.type !== "success") {
         return { ...result, path };
       }
       return result;
     }
-    const result = this.getBoundValue<T>(binding, path);
+    const result = this.getBoundValue(binding, path);
     if (!this.abortSignal.aborted) {
-      cache.set(injectable, result);
+      cache.set(binding, result);
     }
     return result;
   }

@@ -10,6 +10,7 @@ export function isDecoratedInjectable<T>(
     "type" in injectableOptions &&
     (injectableOptions.type === "optional" ||
       injectableOptions.type === "deferred" ||
-      injectableOptions.type === "parent")
+      injectableOptions.type === "parent" ||
+      injectableOptions.type === "multi")
   );
 }

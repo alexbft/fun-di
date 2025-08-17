@@ -16,6 +16,7 @@ export { deferred } from "~/helpers/deferred";
 export { factory } from "~/helpers/factory";
 export { injectable } from "~/helpers/injectable";
 export { injectDeps } from "~/helpers/injectDeps";
+export { multi } from "~/helpers/multi";
 export { optional } from "~/helpers/optional";
 export { parent } from "~/helpers/parent";
 export type { DepsOf } from "~/types/DepsOf";

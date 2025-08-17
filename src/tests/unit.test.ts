@@ -10,6 +10,7 @@ import { deferred } from "~/helpers/deferred";
 import { factory } from "~/helpers/factory";
 import { injectable } from "~/helpers/injectable";
 import { injectDeps } from "~/helpers/injectDeps";
+import { multi } from "~/helpers/multi";
 import { optional } from "~/helpers/optional";
 import { parent } from "~/helpers/parent";
 import type { Injectable } from "~/types/Injectable";
@@ -494,4 +495,34 @@ test("decorate parent binding", async () => {
 
   const a = await grandChildContext.resolve(A);
   expect(a).toBe(5);
+});
+
+test("multi binding", async () => {
+  const A = injectable<string>();
+  const commonBindings = [
+    bind(A, { toValue: "common1" }),
+    bind(A, { toValue: "common2" }),
+  ];
+  const parentBindings = [
+    ...commonBindings,
+    bind(A, { toValue: "parent1" }),
+    bind(A, { toValue: "parent2" }),
+  ];
+  const childBindings = [
+    ...commonBindings,
+    bind(A, { toValue: "child1" }),
+    bind(A, { toValue: "child2" }),
+  ];
+  const parentContext = createContext("parent", parentBindings);
+  const childContext = parentContext.createChildContext("child", childBindings);
+
+  const resolved = await childContext.resolve(multi(A));
+  expect(resolved).toEqual([
+    "common1",
+    "common2",
+    "parent1",
+    "parent2",
+    "child1",
+    "child2",
+  ]);
 });

@@ -1,7 +1,7 @@
-import type { InjectableAny } from "~/types/Injectable";
+import type { Binding } from "~/bind";
 import type { ResolutionResult } from "~/types/ResolutionResult";
 
 export type ResolutionCache = Map<
-  InjectableAny,
+  Binding<unknown>,
   Promise<ResolutionResult<unknown>>
 >;

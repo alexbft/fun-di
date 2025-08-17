@@ -1,6 +1,7 @@
-import type { Binding, BindingTargetAny } from "~/bind";
+import type { Binding } from "~/bind";
 import { Context } from "~/Context";
 import { classToFactory } from "~/helpers/classToFactory";
+import { groupBy } from "~/helpers/groupBy";
 import { ResolutionPath } from "~/ResolutionPath";
 import { Resolver } from "~/Resolver";
 import type { Factory } from "~/types/Factory";
@@ -9,15 +10,15 @@ import type { InjectableOptions } from "~/types/InjectableOptions";
 import type { ResolutionCache } from "~/types/ResolutionCache";
 import type { Deps, Resolved, ResolvedDeps } from "~/types/Resolved";
 
-export interface BindingTargetWithCacheRef {
-  target: BindingTargetAny;
+export interface BindingWithCacheRef {
+  binding: Binding<unknown>;
   contextCache: ResolutionCache;
 }
 
 export class ContextImpl implements Context {
   public readonly parent: ContextImpl | null;
   private readonly leafName: string;
-  private readonly bindingMap: Map<InjectableAny, BindingTargetWithCacheRef>;
+  private readonly bindingMap: Map<InjectableAny, Set<Binding<unknown>>>;
   public readonly cache: ResolutionCache = new Map();
 
   constructor(
@@ -34,11 +35,9 @@ export class ContextImpl implements Context {
       },
       ...bindings,
     ];
-    this.bindingMap = new Map(
-      allBindings.map(
-        ({ source, target }) =>
-          [source, { target, contextCache: this.cache }] as const,
-      ),
+    this.bindingMap = groupBy(
+      allBindings.toReversed(),
+      (binding) => binding.source,
     );
   }
 
@@ -80,11 +79,47 @@ export class ContextImpl implements Context {
     return new ContextImpl(name, additionalBindings, this);
   }
 
-  getBinding(injectable: InjectableAny): BindingTargetWithCacheRef | undefined {
+  getBinding(injectable: InjectableAny): BindingWithCacheRef | undefined {
     const result = this.bindingMap.get(injectable);
     if (result === undefined && this.parent) {
       return this.parent.getBinding(injectable);
     }
+    if (result === undefined) {
+      return result;
+    }
+    const first = result.values().next().value;
+    if (!first) {
+      return undefined;
+    }
+    return {
+      binding: first,
+      contextCache: this.cache,
+    };
+  }
+
+  private getAllBindingsInternal(
+    injectable: InjectableAny,
+  ): Map<Binding<unknown>, ResolutionCache> {
+    const result = this.parent
+      ? this.parent.getAllBindingsInternal(injectable)
+      : new Map<Binding<unknown>, ResolutionCache>();
+    const thisBindings = this.bindingMap.get(injectable);
+    if (thisBindings) {
+      const thisBindingsAsList = [...thisBindings];
+      thisBindingsAsList.reverse();
+      for (const binding of thisBindingsAsList) {
+        result.set(binding, this.cache);
+      }
+    }
     return result;
+  }
+
+  getAllBindings(injectable: InjectableAny): BindingWithCacheRef[] {
+    return [...this.getAllBindingsInternal(injectable).entries()].map(
+      ([binding, cache]) => ({
+        binding,
+        contextCache: cache,
+      }),
+    );
   }
 }

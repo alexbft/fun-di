@@ -5,7 +5,8 @@ export type InjectableOptions<T> = Injectable<T> | DecoratedInjectable<T>;
 export type DecoratedInjectable<T> =
   | OptionalInjectable<T>
   | DeferredInjectable<T>
-  | ParentInjectable<T>;
+  | ParentInjectable<T>
+  | MultiInjectable<T>;
 
 // biome-ignore lint/suspicious/noExplicitAny: internal only
 export type InjectableOptionsAny = InjectableOptions<any>;
@@ -22,5 +23,10 @@ export type DeferredInjectable<T> = {
 
 export type ParentInjectable<T> = {
   type: "parent";
+  injectable: Injectable<T>;
+};
+
+export type MultiInjectable<T> = {
+  type: "multi";
   injectable: Injectable<T>;
 };
