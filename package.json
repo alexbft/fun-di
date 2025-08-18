@@ -1,7 +1,7 @@
 {
   "name": "@alexbft0/fun-di",
   "private": false,
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Fun to use dependency injection framework",
   "keywords": [
     "DI",
