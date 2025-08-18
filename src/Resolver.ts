@@ -15,6 +15,7 @@ import { isDeferredInjectable } from "~/helpers/isDeferredInjectable";
 import { isMultiInjectable } from "~/helpers/isMultiInjectable";
 import { isOptionalInjectable } from "~/helpers/isOptionalInjectable";
 import { isParentInjectable } from "~/helpers/isParentInjectable";
+import { lazyPromise } from "~/helpers/lazyPromise";
 import { uncapitalize } from "~/helpers/uncapitalize";
 import type { ResolutionPath } from "~/ResolutionPath";
 import type { Injectable } from "~/types/Injectable";
@@ -113,7 +114,7 @@ export class Resolver {
     if (isDeferredInjectable(injectableOptions)) {
       return {
         type: "success",
-        value: Promise.resolve().then(() =>
+        value: lazyPromise(() =>
           this.resolve(injectableOptions.injectable, path.truncateToLastNode()),
         ),
       } as OptionsResolutionResult<T>;

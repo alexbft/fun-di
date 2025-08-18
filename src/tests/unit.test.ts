@@ -404,6 +404,20 @@ test("deferred cyclic injection", async () => {
   expect(await b.sum()).toBe(3);
 });
 
+test("deferred dependencies are evaluated lazily", async () => {
+  const A = factory({}, async () => {
+    expect.fail("should not evaluate");
+  });
+
+  const B = factory({ A: deferred(A) }, () => {
+    return 42;
+  });
+
+  const ctx = createContext("test", [bind(A), bind(B)]);
+
+  expect(await ctx.resolve(B)).toBe(42);
+});
+
 test("types", () => {
   factory({}, () => 42) satisfies Injectable<number>;
 
