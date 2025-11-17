@@ -412,7 +412,7 @@ When resolving an injectable, you can specify it as `optionalTryCatch`. It will 
     }),
   ]);
 
-  const a = await context.resolve(optional(A));
+  const a = await context.resolve(optionalTryCatch(A));
   expect(a).toEqual({
     type: "runtimeError",
     error: new Error("Test internal error"),
