@@ -9,7 +9,5 @@ export default defineConfig({
     sourcemap: true,
   },
   plugins: [dts()],
-  resolve: {
-    tsconfigFilename: "tsconfig.json",
-  },
+  tsconfig: "tsconfig.json",
 });
