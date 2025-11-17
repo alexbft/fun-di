@@ -397,6 +397,28 @@ When resolving an injectable, you can specify it as `optional`. This way, if the
 
 The `optional` modifier is valid in factory and class dependency declarations, too.
 
+#### Optional try/catch dependency
+
+When resolving an injectable, you can specify it as `optionalTryCatch`. It will return a `ResolveResult` struct with field `type` being one of `success`, `notFound` or `runtimeError`.
+
+```ts
+  const A = injectable<number>();
+
+  const testContext = createContext("test", [
+    bind(A, {
+      toProvider: () => {
+        throw new Error("Test error");
+      },
+    }),
+  ]);
+
+  const a = await context.resolve(optional(A));
+  expect(a).toEqual({
+    type: "runtimeError",
+    error: new Error("Test internal error"),
+  });
+```
+
 #### Deferred dependency
 
 When resolving an injectable, you can specify it as `deferred`. Then, the resolution process is skipped; you will get a promise that you can `await` later to get the resolved value.

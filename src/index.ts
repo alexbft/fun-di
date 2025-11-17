@@ -18,6 +18,7 @@ export { injectable } from "~/helpers/injectable";
 export { injectDeps } from "~/helpers/injectDeps";
 export { multi } from "~/helpers/multi";
 export { optional } from "~/helpers/optional";
+export { optionalTryCatch } from "~/helpers/optionalTryCatch";
 export { parent } from "~/helpers/parent";
 export type { DepsOf } from "~/types/DepsOf";
 export type { Factory } from "~/types/Factory";
@@ -31,3 +32,4 @@ export type {
 } from "~/types/InjectableOptions";
 export type { MaybePromise } from "~/types/MaybePromise";
 export type { Deps, Resolved, ResolvedDeps } from "~/types/Resolved";
+export type { ResolveResult } from "~/types/ResolveResult";

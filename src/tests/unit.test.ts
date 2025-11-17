@@ -12,9 +12,11 @@ import { injectable } from "~/helpers/injectable";
 import { injectDeps } from "~/helpers/injectDeps";
 import { multi } from "~/helpers/multi";
 import { optional } from "~/helpers/optional";
+import { optionalTryCatch } from "~/helpers/optionalTryCatch";
 import { parent } from "~/helpers/parent";
 import type { Injectable } from "~/types/Injectable";
-import type { Resolved, ResolvedDeps } from "~/types/Resolved";
+import type { Resolved } from "~/types/Resolved";
+import type { ResolveResult } from "~/types/ResolveResult";
 
 test("bind to itself", async () => {
   const A = factory({}, () => 42);
@@ -183,6 +185,37 @@ test("optional deps", async () => {
   });
   expect(a).toBe(42);
   expect(b).toBeUndefined();
+});
+
+test("optional try/catch deps", async () => {
+  const A = injectable<number>();
+  const B = injectable<number>();
+  const C = injectable<number>();
+
+  const testContext = createContext("test", [
+    bind(A, { toValue: 42 }),
+    bind(C, {
+      toProvider: () => {
+        throw new Error("Test internal error");
+      },
+    }),
+  ]);
+  const { a, b, c } = await testContext.resolveDict({
+    a: optionalTryCatch(A),
+    b: optionalTryCatch(B),
+    c: optionalTryCatch(C),
+  });
+
+  const expectedA: ResolveResult<number> = { type: "success", value: 42 };
+  const expectedB: ResolveResult<number> = { type: "notFound" };
+  const expectedC: ResolveResult<number> = {
+    type: "runtimeError",
+    error: new Error("Test internal error"),
+  };
+
+  expect(a).toEqual(expectedA);
+  expect(b).toEqual(expectedB);
+  expect(c).toEqual(expectedC);
 });
 
 test("inject context", async () => {

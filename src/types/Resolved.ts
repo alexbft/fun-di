@@ -4,8 +4,10 @@ import type {
   InjectableOptions,
   MultiInjectable,
   OptionalInjectable,
+  OptionalTryCatchInjectable,
   ParentInjectable,
 } from "~/types/InjectableOptions";
+import type { ResolveResult } from "~/types/ResolveResult";
 
 export type Resolved<T> = T extends Injectable<infer U>
   ? U
@@ -19,7 +21,9 @@ type ResolveDecoratedInjectable<T> = T extends OptionalInjectable<infer U>
       ? U
       : T extends MultiInjectable<infer U>
         ? U[]
-        : never;
+        : T extends OptionalTryCatchInjectable<infer U>
+          ? ResolveResult<U>
+          : never;
 
 export type Deps = Record<string, InjectableOptions<unknown>>;
 

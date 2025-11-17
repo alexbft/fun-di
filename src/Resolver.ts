@@ -8,8 +8,10 @@ import { ResolutionRuntimeError } from "~/errorClasses/ResolutionRuntimeError";
 import { isDeferredInjectable } from "~/helpers/isDeferredInjectable";
 import { isMultiInjectable } from "~/helpers/isMultiInjectable";
 import { isOptionalInjectable } from "~/helpers/isOptionalInjectable";
+import { isOptionalTryCatchInjectable } from "~/helpers/isOptionalTryCatchInjectable";
 import { isParentInjectable } from "~/helpers/isParentInjectable";
 import { lazyPromise } from "~/helpers/lazyPromise";
+import { mapResolutionResultToResolveResult } from "~/helpers/mapResolutionResultToResolveResult";
 import { uncapitalize } from "~/helpers/uncapitalize";
 import type { ResolutionPath } from "~/ResolutionPath";
 import type { Injectable } from "~/types/Injectable";
@@ -104,6 +106,16 @@ export class Resolver {
         } as OptionsResolutionResult<T>;
       }
       return result;
+    }
+    if (isOptionalTryCatchInjectable(injectableOptions)) {
+      const result = await this.resolveInternal(
+        injectableOptions.injectable,
+        path,
+      );
+      return {
+        type: "success",
+        value: mapResolutionResultToResolveResult(result),
+      } as OptionsResolutionResult<T>;
     }
     if (isDeferredInjectable(injectableOptions)) {
       return {
