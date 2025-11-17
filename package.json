@@ -40,11 +40,11 @@
     "dev:publish": "pnpm build && pnpm publish"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.2.0",
-    "rolldown": "1.0.0-beta.32",
-    "rolldown-plugin-dts": "^0.15.6",
-    "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "3.2.4"
+    "@biomejs/biome": "2.3.6",
+    "rolldown": "1.0.0-beta.50",
+    "rolldown-plugin-dts": "0.17.8",
+    "vite-tsconfig-paths": "5.1.4",
+    "vitest": "4.0.9"
   },
   "dependencies": {
     "@ungap/with-resolvers": "^0.1.0"
