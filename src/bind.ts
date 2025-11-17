@@ -8,7 +8,7 @@ import type { InjectableOptions } from "~/types/InjectableOptions";
 import type { MaybePromise } from "~/types/MaybePromise";
 import type { Resolved } from "~/types/Resolved";
 
-export type BindScope = "singleton" | "request" | "transient" | "dependent";
+export type BindScope = "singleton" | "request" | "transient";
 
 export type BindOptions<T> =
   | { toInjectable: InjectableOptions<T> }
@@ -106,7 +106,7 @@ function parseBindOptions<T>(
     }
   }
   return {
-    scope: options.scope ?? "dependent",
+    scope: options.scope ?? "singleton",
     kind: "factory",
     toFactory: factory,
   };

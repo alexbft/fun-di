@@ -1,16 +1,10 @@
 import "@ungap/with-resolvers";
 
-import type {
-  Binding,
-  BindingTarget,
-  BindingTargetAny,
-  BindScope,
-} from "~/bind";
+import type { Binding } from "~/bind";
 import type { BindingWithCacheRef } from "~/ContextImpl";
 import { BindingNotFoundError } from "~/errorClasses/BindingNotFoundError";
 import { FunDiError } from "~/errorClasses/FunDiError";
 import { ResolutionRuntimeError } from "~/errorClasses/ResolutionRuntimeError";
-import { isDecoratedInjectable } from "~/helpers/isDecoratedInjectable";
 import { isDeferredInjectable } from "~/helpers/isDeferredInjectable";
 import { isMultiInjectable } from "~/helpers/isMultiInjectable";
 import { isOptionalInjectable } from "~/helpers/isOptionalInjectable";
@@ -192,10 +186,7 @@ export class Resolver {
         path,
       });
     }
-    const scope =
-      binding.binding.target.scope === "dependent"
-        ? this.getActualScopeForDependentBinding(binding.binding.target, path)
-        : binding.binding.target.scope;
+    const scope = binding.binding.target.scope;
     switch (scope) {
       case "transient":
         return this.getBoundValue(binding.binding, path);
@@ -204,51 +195,6 @@ export class Resolver {
       case "singleton":
         return this.getCachedValue(binding.contextCache, binding.binding, path);
     }
-  }
-
-  // Visible for testing
-  public getActualScopeForDependentBinding(
-    binding: BindingTarget<unknown>,
-    path: ResolutionPath,
-  ): Exclude<BindScope, "dependent"> {
-    if (binding.scope !== "dependent") {
-      throw new FunDiError("unexpected");
-    }
-    if (binding.kind !== "factory") {
-      return "singleton";
-    }
-    const deps = binding.toFactory.deps;
-    let resultScope: Exclude<BindScope, "dependent"> = "singleton";
-    for (const [key, injectableOptions] of Object.entries(deps)) {
-      let dependencyScope: BindScope = "singleton";
-      // TODO: handle multi bindings
-      const injectable = isDecoratedInjectable(injectableOptions)
-        ? injectableOptions.injectable
-        : injectableOptions;
-      const dependencyBinding = path.context?.getBinding(injectable);
-      dependencyScope =
-        dependencyBinding?.binding?.target?.scope ?? dependencyScope;
-      if (dependencyScope === "dependent") {
-        if (isDeferredInjectable(injectableOptions)) {
-          dependencyScope = "singleton";
-        } else {
-          dependencyScope = this.getActualScopeForDependentBinding(
-            dependencyBinding?.binding?.target as BindingTargetAny,
-            path.add({ injectableOptions, alias: key }),
-          );
-        }
-      }
-      if (resultScope === "singleton" && dependencyScope === "request") {
-        resultScope = "request";
-      }
-      if (
-        (resultScope === "singleton" || resultScope === "request") &&
-        dependencyScope === "transient"
-      ) {
-        resultScope = "transient";
-      }
-    }
-    return resultScope;
   }
 
   private async getBoundValue(

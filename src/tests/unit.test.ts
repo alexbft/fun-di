@@ -252,36 +252,6 @@ test("errors are not cached if not bound as singleton", async () => {
   expect(errorRunner).toHaveBeenCalledTimes(2);
 });
 
-test("default scope for a factory binding depends on factory dependencies binding scopes, and is calculated dynamically", async () => {
-  const Dependency = factory({}, () => "dependency");
-  const deps = { Dependency };
-
-  const runner = vi.fn(
-    ({ dependency }: ResolvedDeps<typeof deps>) => dependency,
-  );
-  const Dependent = factory(deps, runner);
-  const dependentBinding = bind(Dependent);
-
-  const testContext = createContext("test", [
-    dependentBinding,
-    bind(Dependency, { scope: "singleton" }),
-  ]);
-
-  expect(await testContext.resolve(Dependent)).toBe("dependency");
-  expect(await testContext.resolve(Dependent)).toBe("dependency");
-  expect(runner).toHaveBeenCalledTimes(1);
-
-  runner.mockClear();
-
-  const testContext2 = createContext("test2", [
-    dependentBinding,
-    bind(Dependency, { scope: "transient" }),
-  ]);
-  expect(await testContext2.resolve(Dependent)).toBe("dependency");
-  expect(await testContext2.resolve(Dependent)).toBe("dependency");
-  expect(runner).toHaveBeenCalledTimes(2);
-});
-
 test("fails early if one of dependencies cannot be resolved", async () => {
   let bInvoked = false;
   let bResolved = false;

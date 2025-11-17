@@ -229,7 +229,7 @@ As a convenient option, you can bind a factory or a class to itself, if `toXyz` 
 
 #### Singleton scope
 
-The result is cached per context. Suitable for lazily initialized services, such as DB interfaces, API entrypoints. This is a default scope for `toValue` and `toProvider` targets.
+The result is cached per context. Suitable for lazily initialized services, such as DB interfaces, API entrypoints. This is a default scope.
 
 ```ts
   const A = factory({}, () => {
@@ -278,12 +278,6 @@ This scope is suitable for user-specific or client request-specific data, such a
   a1 !== a3; // true
   a2 !== a3; // true
 ```
-
-#### Dependent scope
-
-A scope derived from provider dependencies. It is equal to a minimal scope of all the dependencies, in the order of `transient` < `request` < `singleton`. For an empty list of dependencies, it is equal to `singleton`.
-
-This scope is default for `toFactory` and `toClass` bindings.
 
 ### Context
 
